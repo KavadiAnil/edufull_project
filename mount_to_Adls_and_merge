@@ -1,8 +1,12 @@
-# Databricks notebook source
+
+%python
 pass_of_adls=dbutils.secrets.get("secrets_scopes_azure","accesKeyOfadls0edufullnes")
 
-# COMMAND ----------
 
+
+
+
+%python
 # Unmount the existing mount point
 dbutils.fs.unmount("/mnt/projects_adls_correct")
 
@@ -13,29 +17,28 @@ dbutils.fs.mount(
     extra_configs={"fs.azure.account.key.adls0edufullnes.blob.core.windows.net": pass_of_adls}
 )
 
-# COMMAND ----------
 
+
+
+%python
 from datetime import datetime
 
 current_date = datetime.now().strftime("%Y/%m/%d")
 display(current_date) 
 formate_path = 'dbfs:/mnt/projects_adls_correct/' + current_date
 
-# COMMAND ----------
 
-# MAGIC %fs ls dbfs:/mnt/projects_adls_correct/2025/03/19/
 
-# COMMAND ----------
 
-files = dbutils.fs.ls(formate_path)
 
-# COMMAND ----------
+%fs ls dbfs:/mnt/projects_adls_correct/2025/03/19/
 
-# MAGIC %md
-# MAGIC ## Dataframe and temp view table creattion dynamicaly
 
-# COMMAND ----------
 
+
+
+
+%python
 # Cell 2
 for file in files:
     df_name = "df_" + file.name[:-4]
@@ -45,322 +48,342 @@ for file in files:
         inferSchema=True
     )
     globals()[df_name].createOrReplaceTempView(df_name + "_view")
+    
 
-# COMMAND ----------
+
+
 
 
 for file in files:
     df_name_for = "df_" + file.name[:-4]+"_view" 
     print(df_name_for)
 
-# COMMAND ----------
 
-# MAGIC %sql
-# MAGIC MERGE INTO abd.df_prj_customers AS target
-# MAGIC USING df_prj_Customers_view AS source
-# MAGIC ON target.CustomerID = source.CustomerID
-# MAGIC WHEN MATCHED THEN
-# MAGIC   UPDATE SET
-# MAGIC     target.FirstName = source.FirstName,
-# MAGIC     target.LastName = source.LastName,
-# MAGIC     target.Email = source.Email,
-# MAGIC     target.Phone = source.Phone,
-# MAGIC     target.CreatedDate = source.CreatedDate,
-# MAGIC     target.ModifiedDate = source.ModifiedDate
-# MAGIC WHEN NOT MATCHED THEN
-# MAGIC   INSERT (
-# MAGIC     CustomerID,
-# MAGIC     FirstName,
-# MAGIC     LastName,
-# MAGIC     Email,
-# MAGIC     Phone,
-# MAGIC     CreatedDate,
-# MAGIC     ModifiedDate
-# MAGIC   )
-# MAGIC   VALUES (
-# MAGIC     source.CustomerID,
-# MAGIC     source.FirstName,
-# MAGIC     source.LastName,
-# MAGIC     source.Email,
-# MAGIC     source.Phone,
-# MAGIC     source.CreatedDate,
-# MAGIC     source.ModifiedDate
-# MAGIC   )
+%sql
+MERGE INTO abd.df_prj_customers AS target
+USING df_prj_Customers_view AS source
+ON target.CustomerID = source.CustomerID
+WHEN MATCHED THEN
+  UPDATE SET
+    target.FirstName = source.FirstName,
+    target.LastName = source.LastName,
+    target.Email = source.Email,
+    target.Phone = source.Phone,
+    target.CreatedDate = source.CreatedDate,
+    target.ModifiedDate = source.ModifiedDate
+WHEN NOT MATCHED THEN
+  INSERT (
+    CustomerID,
+    FirstName,
+    LastName,
+    Email,
+    Phone,
+    CreatedDate,
+    ModifiedDate
+  )
+  VALUES (
+    source.CustomerID,
+    source.FirstName,
+    source.LastName,
+    source.Email,
+    source.Phone,
+    source.CreatedDate,
+    source.ModifiedDate
+  )
 
-# COMMAND ----------
 
-# MAGIC %sql
-# MAGIC MERGE INTO  abd.df_prj_inventory AS target
-# MAGIC USING df_prj_Inventory_view  AS source
-# MAGIC ON target.ProductID = source.ProductID
-# MAGIC WHEN MATCHED THEN
-# MAGIC   UPDATE SET
-# MAGIC     target.StockQuantity = source.StockQuantity,
-# MAGIC     target.CreatedDate = source.CreatedDate,
-# MAGIC     target.ModifiedDate = source.ModifiedDate
-# MAGIC WHEN NOT MATCHED THEN
-# MAGIC   INSERT (
-# MAGIC     ProductID,
-# MAGIC     StockQuantity,
-# MAGIC     CreatedDate,
-# MAGIC     ModifiedDate
-# MAGIC   )
-# MAGIC   VALUES (
-# MAGIC     source.ProductID,
-# MAGIC     source.StockQuantity,
-# MAGIC     source.CreatedDate,
-# MAGIC     source.ModifiedDate
-# MAGIC   )
 
-# COMMAND ----------
 
-# MAGIC %sql
-# MAGIC MERGE INTO abd.df_prj_orderitems AS target
-# MAGIC USING df_prj_Orderitems_view AS source
-# MAGIC ON target.OrderItemID = source.OrderItemID
-# MAGIC WHEN MATCHED THEN
-# MAGIC   UPDATE SET
-# MAGIC     target.OrderID = source.OrderID,
-# MAGIC     target.ProductID = source.ProductID,
-# MAGIC     target.Quantity = source.Quantity,
-# MAGIC     target.TotalPrice = source.TotalPrice,
-# MAGIC     target.CreatedDate = source.CreatedDate,
-# MAGIC     target.ModifiedDate = source.ModifiedDate
-# MAGIC WHEN NOT MATCHED THEN
-# MAGIC   INSERT (
-# MAGIC     OrderItemID,
-# MAGIC     OrderID,
-# MAGIC     ProductID,
-# MAGIC     Quantity,
-# MAGIC     TotalPrice,
-# MAGIC     CreatedDate,
-# MAGIC     ModifiedDate
-# MAGIC   )
-# MAGIC   VALUES (
-# MAGIC     source.OrderItemID,
-# MAGIC     source.OrderID,
-# MAGIC     source.ProductID,
-# MAGIC     source.Quantity,
-# MAGIC     source.TotalPrice,
-# MAGIC     source.CreatedDate,
-# MAGIC     source.ModifiedDate
-# MAGIC   )
 
-# COMMAND ----------
+%sql
+MERGE INTO  abd.df_prj_inventory AS target
+USING df_prj_Inventory_view  AS source
+ON target.ProductID = source.ProductID
+WHEN MATCHED THEN
+  UPDATE SET
+    target.StockQuantity = source.StockQuantity,
+    target.CreatedDate = source.CreatedDate,
+    target.ModifiedDate = source.ModifiedDate
+WHEN NOT MATCHED THEN
+  INSERT (
+    ProductID,
+    StockQuantity,
+    CreatedDate,
+    ModifiedDate
+  )
+  VALUES (
+    source.ProductID,
+    source.StockQuantity,
+    source.CreatedDate,
+    source.ModifiedDate
+  )
 
-# MAGIC %sql
-# MAGIC MERGE INTO abd.df_prj_orders AS target
-# MAGIC USING df_prj_Orders_view AS source
-# MAGIC ON target.OrderID = source.OrderID
-# MAGIC WHEN MATCHED THEN
-# MAGIC   UPDATE SET
-# MAGIC     target.CustomerID = source.CustomerID,
-# MAGIC     target.OrderDate = source.OrderDate,
-# MAGIC     target.OrderStatus = source.OrderStatus,
-# MAGIC     target.CreatedDate = source.CreatedDate,
-# MAGIC     target.ModifiedDate = source.ModifiedDate
-# MAGIC WHEN NOT MATCHED THEN
-# MAGIC   INSERT (
-# MAGIC     OrderID,
-# MAGIC     CustomerID,
-# MAGIC     OrderDate,
-# MAGIC     OrderStatus,
-# MAGIC     CreatedDate,
-# MAGIC     ModifiedDate
-# MAGIC   )
-# MAGIC   VALUES (
-# MAGIC     source.OrderID,
-# MAGIC     source.CustomerID,
-# MAGIC     source.OrderDate,
-# MAGIC     source.OrderStatus,
-# MAGIC     source.CreatedDate,
-# MAGIC     source.ModifiedDate
-# MAGIC   )
 
-# COMMAND ----------
 
-# MAGIC %sql
-# MAGIC MERGE INTO abd.df_prj_payments AS target
-# MAGIC USING df_prj_Payments_view AS source
-# MAGIC ON target.PaymentID = source.PaymentID
-# MAGIC WHEN MATCHED THEN
-# MAGIC   UPDATE SET
-# MAGIC     target.target = 0;
-# MAGIC
-# MAGIC INSERT INTO abd.df_prj_payments
-# MAGIC SELECT 
-# MAGIC     PaymentID,
-# MAGIC     OrderID,
-# MAGIC     PaymentAmount,
-# MAGIC     PaymentDate,
-# MAGIC     CreatedDate,
-# MAGIC     ModifiedDate,
-# MAGIC     1 
-# MAGIC FROM df_prj_Payments_view
 
-# COMMAND ----------
 
-# MAGIC %sql
-# MAGIC MERGE INTO abd.df_prj_products AS target
-# MAGIC USING df_prj_Products_view AS source
-# MAGIC ON target.ProductID = source.ProductID
-# MAGIC WHEN MATCHED THEN
-# MAGIC   UPDATE SET
-# MAGIC     target.ProductName = source.ProductName,
-# MAGIC     target.Price = source.Price,
-# MAGIC     target.Category = source.Category,
-# MAGIC     target.CreatedDate = source.CreatedDate,
-# MAGIC     target.ModifiedDate = source.ModifiedDate
-# MAGIC WHEN NOT MATCHED THEN
-# MAGIC   INSERT (
-# MAGIC     ProductID,
-# MAGIC     ProductName,
-# MAGIC     Price,
-# MAGIC     Category,
-# MAGIC     CreatedDate,
-# MAGIC     ModifiedDate
-# MAGIC   )
-# MAGIC   VALUES (
-# MAGIC     source.ProductID,
-# MAGIC     source.ProductName,
-# MAGIC     source.Price,
-# MAGIC     source.Category,
-# MAGIC     source.CreatedDate,
-# MAGIC     source.ModifiedDate
-# MAGIC   )
+%sql
+MERGE INTO abd.df_prj_orderitems AS target
+USING df_prj_Orderitems_view AS source
+ON target.OrderItemID = source.OrderItemID
+WHEN MATCHED THEN
+  UPDATE SET
+    target.OrderID = source.OrderID,
+    target.ProductID = source.ProductID,
+    target.Quantity = source.Quantity,
+    target.TotalPrice = source.TotalPrice,
+    target.CreatedDate = source.CreatedDate,
+    target.ModifiedDate = source.ModifiedDate
+WHEN NOT MATCHED THEN
+  INSERT (
+    OrderItemID,
+    OrderID,
+    ProductID,
+    Quantity,
+    TotalPrice,
+    CreatedDate,
+    ModifiedDate
+  )
+  VALUES (
+    source.OrderItemID,
+    source.OrderID,
+    source.ProductID,
+    source.Quantity,
+    source.TotalPrice,
+    source.CreatedDate,
+    source.ModifiedDate
+  )
 
-# COMMAND ----------
 
-# MAGIC %sql
-# MAGIC MERGE INTO abd.df_prj_promotions AS target
-# MAGIC USING df_prj_Promotions_view AS source
-# MAGIC ON target.PromotionID = source.PromotionID
-# MAGIC WHEN MATCHED THEN
-# MAGIC   UPDATE SET
-# MAGIC     target.PromotionName = source.PromotionName,
-# MAGIC     target.Discount = source.Discount,
-# MAGIC     target.StartDate = source.StartDate,
-# MAGIC     target.EndDate = source.EndDate,
-# MAGIC     target.CreatedDate = source.CreatedDate,
-# MAGIC     target.ModifiedDate = source.ModifiedDate
-# MAGIC WHEN NOT MATCHED THEN
-# MAGIC   INSERT (
-# MAGIC     PromotionID,
-# MAGIC     PromotionName,
-# MAGIC     Discount,
-# MAGIC     StartDate,
-# MAGIC     EndDate,
-# MAGIC     CreatedDate,
-# MAGIC     ModifiedDate
-# MAGIC   )
-# MAGIC   VALUES (
-# MAGIC     source.PromotionID,
-# MAGIC     source.PromotionName,
-# MAGIC     source.Discount,
-# MAGIC     source.StartDate,
-# MAGIC     source.EndDate,
-# MAGIC     source.CreatedDate,
-# MAGIC     source.ModifiedDate
-# MAGIC   )
 
-# COMMAND ----------
 
-# MAGIC %sql
-# MAGIC MERGE INTO abd.df_prj_returns AS target
-# MAGIC USING df_prj_Returns_view AS source
-# MAGIC ON target.ReturnID = source.ReturnID
-# MAGIC WHEN MATCHED THEN
-# MAGIC   UPDATE SET
-# MAGIC     target.OrderID = source.OrderID,
-# MAGIC     target.ProductID = source.ProductID,
-# MAGIC     target.ReturnReason = source.ReturnReason,
-# MAGIC     target.ReturnDate = source.ReturnDate,
-# MAGIC     target.CreatedDate = source.CreatedDate,
-# MAGIC     target.ModifiedDate = source.ModifiedDate
-# MAGIC WHEN NOT MATCHED THEN
-# MAGIC   INSERT (
-# MAGIC     ReturnID,
-# MAGIC     OrderID,
-# MAGIC     ProductID,
-# MAGIC     ReturnReason,
-# MAGIC     ReturnDate,
-# MAGIC     CreatedDate,
-# MAGIC     ModifiedDate
-# MAGIC   )
-# MAGIC   VALUES (
-# MAGIC     source.ReturnID,
-# MAGIC     source.OrderID,
-# MAGIC     source.ProductID,
-# MAGIC     source.ReturnReason,
-# MAGIC     source.ReturnDate,
-# MAGIC     source.CreatedDate,
-# MAGIC     source.ModifiedDate
-# MAGIC   )
+%sql
+MERGE INTO abd.df_prj_orders AS target
+USING df_prj_Orders_view AS source
+ON target.OrderID = source.OrderID
+WHEN MATCHED THEN
+  UPDATE SET
+    target.CustomerID = source.CustomerID,
+    target.OrderDate = source.OrderDate,
+    target.OrderStatus = source.OrderStatus,
+    target.CreatedDate = source.CreatedDate,
+    target.ModifiedDate = source.ModifiedDate
+WHEN NOT MATCHED THEN
+  INSERT (
+    OrderID,
+    CustomerID,
+    OrderDate,
+    OrderStatus,
+    CreatedDate,
+    ModifiedDate
+  )
+  VALUES (
+    source.OrderID,
+    source.CustomerID,
+    source.OrderDate,
+    source.OrderStatus,
+    source.CreatedDate,
+    source.ModifiedDate
+  )
 
-# COMMAND ----------
 
-# MAGIC %sql
-# MAGIC MERGE INTO abd.df_prj_reviews AS target
-# MAGIC USING df_prj_Reviews_view AS source
-# MAGIC ON target.ReviewID = source.ReviewID
-# MAGIC WHEN MATCHED THEN
-# MAGIC   UPDATE SET
-# MAGIC     target.ProductID = source.ProductID,
-# MAGIC     target.CustomerID = source.CustomerID,
-# MAGIC     target.Rating = source.Rating,
-# MAGIC     target.Comment = source.Comment,
-# MAGIC     target.CreatedDate = source.CreatedDate,
-# MAGIC     target.ModifiedDate = source.ModifiedDate
-# MAGIC WHEN NOT MATCHED THEN
-# MAGIC   INSERT (
-# MAGIC     ReviewID,
-# MAGIC     ProductID,
-# MAGIC     CustomerID,
-# MAGIC     Rating,
-# MAGIC     Comment,
-# MAGIC     CreatedDate,
-# MAGIC     ModifiedDate
-# MAGIC   )
-# MAGIC   VALUES (
-# MAGIC     source.ReviewID,
-# MAGIC     source.ProductID,
-# MAGIC     source.CustomerID,
-# MAGIC     source.Rating,
-# MAGIC     source.Comment,
-# MAGIC     source.CreatedDate,
-# MAGIC     source.ModifiedDate
-# MAGIC   )
 
-# COMMAND ----------
 
-# MAGIC %sql
-# MAGIC MERGE INTO abd.df_prj_shippingdetails AS target
-# MAGIC USING df_prj_ShippingDetails_view AS source
-# MAGIC ON target.ShippingID = source.ShippingID
-# MAGIC WHEN MATCHED THEN
-# MAGIC   UPDATE SET
-# MAGIC     target.OrderID = source.OrderID,
-# MAGIC     target.ShippingMethod = source.ShippingMethod,
-# MAGIC     target.TrackingNumber = source.TrackingNumber,
-# MAGIC     target.ShipDate = source.ShipDate,
-# MAGIC     target.CreatedDate = source.CreatedDate,
-# MAGIC     target.ModifiedDate = source.ModifiedDate
-# MAGIC WHEN NOT MATCHED THEN
-# MAGIC   INSERT (
-# MAGIC     ShippingID,
-# MAGIC     OrderID,
-# MAGIC     ShippingMethod,
-# MAGIC     TrackingNumber,
-# MAGIC     ShipDate,
-# MAGIC     CreatedDate,
-# MAGIC     ModifiedDate
-# MAGIC   )
-# MAGIC   VALUES (
-# MAGIC     source.ShippingID,
-# MAGIC     source.OrderID,
-# MAGIC     source.ShippingMethod,
-# MAGIC     source.TrackingNumber,
-# MAGIC     source.ShipDate,
-# MAGIC     source.CreatedDate,
-# MAGIC     source.ModifiedDate
-# MAGIC   )
+
+%sql
+MERGE INTO abd.df_prj_payments AS target
+USING df_prj_Payments_view AS source
+ON target.PaymentID = source.PaymentID
+WHEN MATCHED THEN
+  UPDATE SET
+    target.target = 0;
+
+INSERT INTO abd.df_prj_payments
+SELECT 
+    PaymentID,
+    OrderID,
+    PaymentAmount,
+    PaymentDate,
+    CreatedDate,
+    ModifiedDate,
+    1 
+FROM df_prj_Payments_view
+
+
+
+
+%sql
+MERGE INTO abd.df_prj_products AS target
+USING df_prj_Products_view AS source
+ON target.ProductID = source.ProductID
+WHEN MATCHED THEN
+  UPDATE SET
+    target.ProductName = source.ProductName,
+    target.Price = source.Price,
+    target.Category = source.Category,
+    target.CreatedDate = source.CreatedDate,
+    target.ModifiedDate = source.ModifiedDate
+WHEN NOT MATCHED THEN
+  INSERT (
+    ProductID,
+    ProductName,
+    Price,
+    Category,
+    CreatedDate,
+    ModifiedDate
+  )
+  VALUES (
+    source.ProductID,
+    source.ProductName,
+    source.Price,
+    source.Category,
+    source.CreatedDate,
+    source.ModifiedDate
+  )
+
+
+
+
+
+%sql
+MERGE INTO abd.df_prj_promotions AS target
+USING df_prj_Promotions_view AS source
+ON target.PromotionID = source.PromotionID
+WHEN MATCHED THEN
+  UPDATE SET
+    target.PromotionName = source.PromotionName,
+    target.Discount = source.Discount,
+    target.StartDate = source.StartDate,
+    target.EndDate = source.EndDate,
+    target.CreatedDate = source.CreatedDate,
+    target.ModifiedDate = source.ModifiedDate
+WHEN NOT MATCHED THEN
+  INSERT (
+    PromotionID,
+    PromotionName,
+    Discount,
+    StartDate,
+    EndDate,
+    CreatedDate,
+    ModifiedDate
+  )
+  VALUES (
+    source.PromotionID,
+    source.PromotionName,
+    source.Discount,
+    source.StartDate,
+    source.EndDate,
+    source.CreatedDate,
+    source.ModifiedDate
+  )
+
+
+
+
+%sql
+MERGE INTO abd.df_prj_returns AS target
+USING df_prj_Returns_view AS source
+ON target.ReturnID = source.ReturnID
+WHEN MATCHED THEN
+  UPDATE SET
+    target.OrderID = source.OrderID,
+    target.ProductID = source.ProductID,
+    target.ReturnReason = source.ReturnReason,
+    target.ReturnDate = source.ReturnDate,
+    target.CreatedDate = source.CreatedDate,
+    target.ModifiedDate = source.ModifiedDate
+WHEN NOT MATCHED THEN
+  INSERT (
+    ReturnID,
+    OrderID,
+    ProductID,
+    ReturnReason,
+    ReturnDate,
+    CreatedDate,
+    ModifiedDate
+  )
+  VALUES (
+    source.ReturnID,
+    source.OrderID,
+    source.ProductID,
+    source.ReturnReason,
+    source.ReturnDate,
+    source.CreatedDate,
+    source.ModifiedDate
+  )
+
+
+
+
+
+%sql
+MERGE INTO abd.df_prj_reviews AS target
+USING df_prj_Reviews_view AS source
+ON target.ReviewID = source.ReviewID
+WHEN MATCHED THEN
+  UPDATE SET
+    target.ProductID = source.ProductID,
+    target.CustomerID = source.CustomerID,
+    target.Rating = source.Rating,
+    target.Comment = source.Comment,
+    target.CreatedDate = source.CreatedDate,
+    target.ModifiedDate = source.ModifiedDate
+WHEN NOT MATCHED THEN
+  INSERT (
+    ReviewID,
+    ProductID,
+    CustomerID,
+    Rating,
+    Comment,
+    CreatedDate,
+    ModifiedDate
+  )
+  VALUES (
+    source.ReviewID,
+    source.ProductID,
+    source.CustomerID,
+    source.Rating,
+    source.Comment,
+    source.CreatedDate,
+    source.ModifiedDate
+  )
+
+
+
+
+
+%sql
+MERGE INTO abd.df_prj_shippingdetails AS target
+USING df_prj_ShippingDetails_view AS source
+ON target.ShippingID = source.ShippingID
+WHEN MATCHED THEN
+  UPDATE SET
+    target.OrderID = source.OrderID,
+    target.ShippingMethod = source.ShippingMethod,
+    target.TrackingNumber = source.TrackingNumber,
+    target.ShipDate = source.ShipDate,
+    target.CreatedDate = source.CreatedDate,
+    target.ModifiedDate = source.ModifiedDate
+WHEN NOT MATCHED THEN
+  INSERT (
+    ShippingID,
+    OrderID,
+    ShippingMethod,
+    TrackingNumber,
+    ShipDate,
+    CreatedDate,
+    ModifiedDate
+  )
+  VALUES (
+    source.ShippingID,
+    source.OrderID,
+    source.ShippingMethod,
+    source.TrackingNumber,
+    source.ShipDate,
+    source.CreatedDate,
+    source.ModifiedDate
+  )
+
+
+
+
