@@ -1,0 +1,303 @@
+{
+    "name": "MATSER PIPLINE",
+    "properties": {
+        "activities": [
+            {
+                "name": "MASTER HYDRATION FILE",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Lookup_start_logs_master",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "HYDRATION TO SHARE POINT",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "full_load__exce_pipline",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "MASTER HYDRATION FILE",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "FULL_load_implimentation",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "incremetal_load_pipline",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "MASTER HYDRATION FILE",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "inremental_load_pipline",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "Execute_mount_notebook",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "full_load__exce_pipline",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "incremetal_load_pipline",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "mount_and_merging",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "Execute_data_agg_JDBC",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Execute_mount_notebook",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "Data_agg_jdbc",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "Lookup_start_logs_master",
+                "type": "Lookup",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "SqlServerSource",
+                        "sqlReaderStoredProcedureName": "[Edufullness].[ADFPipelineStartLogs]",
+                        "storedProcedureParameters": {
+                            "P_ADFName": {
+                                "type": "String",
+                                "value": {
+                                    "value": "@pipeline().DataFactory",
+                                    "type": "Expression"
+                                }
+                            },
+                            "P_Parent_ID": {
+                                "type": "Int32",
+                                "value": null
+                            },
+                            "P_PipelineName": {
+                                "type": "String",
+                                "value": {
+                                    "value": "@pipeline().Pipeline",
+                                    "type": "Expression"
+                                }
+                            },
+                            "P_RunID": {
+                                "type": "String",
+                                "value": {
+                                    "value": "@pipeline().RunId",
+                                    "type": "Expression"
+                                }
+                            },
+                            "P_StartTime": {
+                                "type": "Datetime",
+                                "value": {
+                                    "value": "@utcNow()",
+                                    "type": "Expression"
+                                }
+                            }
+                        },
+                        "queryTimeout": "02:00:00",
+                        "partitionOption": "None"
+                    },
+                    "dataset": {
+                        "referenceName": "DS_SqlServerTable_watermark",
+                        "type": "DatasetReference"
+                    }
+                }
+            },
+            {
+                "name": "ending_logs_stored_pro_success",
+                "type": "SqlServerStoredProcedure",
+                "dependsOn": [
+                    {
+                        "activity": "Execute_data_agg_JDBC",
+                        "dependencyConditions": [
+                            "Skipped"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "storedProcedureName": "[Edufullness].[ADFPipelineLogsEnds]",
+                    "storedProcedureParameters": {
+                        "P_EndTime": {
+                            "value": {
+                                "value": "@utcNow()",
+                                "type": "Expression"
+                            },
+                            "type": "Datetime"
+                        },
+                        "P_ErrorMessage": {
+                            "value": null,
+                            "type": "String"
+                        },
+                        "P_ID": {
+                            "value": {
+                                "value": "@activity('Lookup_start_logs_master').output.firstRow.CurrentID",
+                                "type": "Expression"
+                            },
+                            "type": "Int32"
+                        },
+                        "P_Status": {
+                            "value": "Succeess",
+                            "type": "String"
+                        }
+                    }
+                },
+                "linkedServiceName": {
+                    "referenceName": "SqlServer1",
+                    "type": "LinkedServiceReference"
+                }
+            },
+            {
+                "name": "Stored procedure1",
+                "type": "SqlServerStoredProcedure",
+                "dependsOn": [
+                    {
+                        "activity": "Execute_data_agg_JDBC",
+                        "dependencyConditions": [
+                            "Failed"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "storedProcedureName": "[Edufullness].[ADFPipelineLogsEnds]",
+                    "storedProcedureParameters": {
+                        "P_EndTime": {
+                            "value": {
+                                "value": "@utcNow()",
+                                "type": "Expression"
+                            },
+                            "type": "Datetime"
+                        },
+                        "P_ErrorMessage": {
+                            "value": {
+                                "value": "@activity('Execute_data_agg_JDBC').error.message",
+                                "type": "Expression"
+                            },
+                            "type": "String"
+                        },
+                        "P_ID": {
+                            "value": {
+                                "value": "@activity('Lookup_start_logs_master').output.firstRow.CurrentID",
+                                "type": "Expression"
+                            },
+                            "type": "Int32"
+                        },
+                        "P_Status": {
+                            "value": "failed",
+                            "type": "String"
+                        }
+                    }
+                },
+                "linkedServiceName": {
+                    "referenceName": "SqlServer1",
+                    "type": "LinkedServiceReference"
+                }
+            }
+        ],
+        "variables": {
+            "timevalue": {
+                "type": "String"
+            }
+        },
+        "folder": {
+            "name": "EDUFULLNESS-PROJECT"
+        },
+        "annotations": [],
+        "lastPublishTime": "2025-03-09T04:14:25Z"
+    },
+    "type": "Microsoft.DataFactory/factories/pipelines"
+}
