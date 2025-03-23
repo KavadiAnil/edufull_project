@@ -7,10 +7,11 @@ This is the Azure data engineering project.
 This project involves various Azure services to create a comprehensive data engineering solution. The key components of the project are:
 
 - **Azure Data Lake Storage (ADLS) Gen2**: Used for storing data at any scale.
-- **Azure Databricks**: Provides an Apache Spark-based analytics platform optimized for Azure.
 - **Azure Data Factory**: Orchestrates and automates data movement and transformation.
+- **Azure Databricks**: Provides an Apache Spark-based analytics platform optimized for Azure.
 - **Azure SQL Database**: A relational database service for storing structured data.
-
+- **Azure Key Vaults**: Provides secure storage and management of sensitive information such as passwords and access keys.
+- **Catalog Delta Tables**: Used in Databricks for efficient data storage and management, enabling ACID transactions and scalable metadata handling.
 ## Project Description
 
 The process involves extracting data from the source raw layer, which resides in an on-premise SQL Server. The data has been migrated from the SQL Server to ADLS Gen2 (Bronze Layer) using a linked service and an integration runtime. The extraction of data is performed through full load and incremental load methods, based on the time between the last modified timestamp and the maximum timestamp of the source table. The data is then loaded into ADLS as CSV files.
