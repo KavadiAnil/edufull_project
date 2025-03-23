@@ -1,0 +1,366 @@
+# Databricks notebook source
+pass_of_adls=dbutils.secrets.get("secrets_scopes_azure","accesKeyOfadls0edufullnes")
+
+# COMMAND ----------
+
+# Unmount the existing mount point
+dbutils.fs.unmount("/mnt/projects_adls_correct")
+
+# Mount the storage again
+dbutils.fs.mount(
+    source="wasbs://data@adls0edufullnes.blob.core.windows.net/",
+    mount_point="/mnt/projects_adls_correct",
+    extra_configs={"fs.azure.account.key.adls0edufullnes.blob.core.windows.net": pass_of_adls}
+)
+
+# COMMAND ----------
+
+from datetime import datetime
+
+current_date = datetime.now().strftime("%Y/%m/%d")
+display(current_date) 
+formate_path = 'dbfs:/mnt/projects_adls_correct/' + current_date
+
+# COMMAND ----------
+
+# MAGIC %fs ls dbfs:/mnt/projects_adls_correct/2025/03/19/
+
+# COMMAND ----------
+
+files = dbutils.fs.ls(formate_path)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Dataframe and temp view table creattion dynamicaly
+
+# COMMAND ----------
+
+# Cell 2
+for file in files:
+    df_name = "df_" + file.name[:-4]
+    globals()[df_name] = spark.read.csv(
+        path=file.path, 
+        header=True, 
+        inferSchema=True
+    )
+    globals()[df_name].createOrReplaceTempView(df_name + "_view")
+
+# COMMAND ----------
+
+
+for file in files:
+    df_name_for = "df_" + file.name[:-4]+"_view" 
+    print(df_name_for)
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC MERGE INTO abd.df_prj_customers AS target
+# MAGIC USING df_prj_Customers_view AS source
+# MAGIC ON target.CustomerID = source.CustomerID
+# MAGIC WHEN MATCHED THEN
+# MAGIC   UPDATE SET
+# MAGIC     target.FirstName = source.FirstName,
+# MAGIC     target.LastName = source.LastName,
+# MAGIC     target.Email = source.Email,
+# MAGIC     target.Phone = source.Phone,
+# MAGIC     target.CreatedDate = source.CreatedDate,
+# MAGIC     target.ModifiedDate = source.ModifiedDate
+# MAGIC WHEN NOT MATCHED THEN
+# MAGIC   INSERT (
+# MAGIC     CustomerID,
+# MAGIC     FirstName,
+# MAGIC     LastName,
+# MAGIC     Email,
+# MAGIC     Phone,
+# MAGIC     CreatedDate,
+# MAGIC     ModifiedDate
+# MAGIC   )
+# MAGIC   VALUES (
+# MAGIC     source.CustomerID,
+# MAGIC     source.FirstName,
+# MAGIC     source.LastName,
+# MAGIC     source.Email,
+# MAGIC     source.Phone,
+# MAGIC     source.CreatedDate,
+# MAGIC     source.ModifiedDate
+# MAGIC   )
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC MERGE INTO  abd.df_prj_inventory AS target
+# MAGIC USING df_prj_Inventory_view  AS source
+# MAGIC ON target.ProductID = source.ProductID
+# MAGIC WHEN MATCHED THEN
+# MAGIC   UPDATE SET
+# MAGIC     target.StockQuantity = source.StockQuantity,
+# MAGIC     target.CreatedDate = source.CreatedDate,
+# MAGIC     target.ModifiedDate = source.ModifiedDate
+# MAGIC WHEN NOT MATCHED THEN
+# MAGIC   INSERT (
+# MAGIC     ProductID,
+# MAGIC     StockQuantity,
+# MAGIC     CreatedDate,
+# MAGIC     ModifiedDate
+# MAGIC   )
+# MAGIC   VALUES (
+# MAGIC     source.ProductID,
+# MAGIC     source.StockQuantity,
+# MAGIC     source.CreatedDate,
+# MAGIC     source.ModifiedDate
+# MAGIC   )
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC MERGE INTO abd.df_prj_orderitems AS target
+# MAGIC USING df_prj_Orderitems_view AS source
+# MAGIC ON target.OrderItemID = source.OrderItemID
+# MAGIC WHEN MATCHED THEN
+# MAGIC   UPDATE SET
+# MAGIC     target.OrderID = source.OrderID,
+# MAGIC     target.ProductID = source.ProductID,
+# MAGIC     target.Quantity = source.Quantity,
+# MAGIC     target.TotalPrice = source.TotalPrice,
+# MAGIC     target.CreatedDate = source.CreatedDate,
+# MAGIC     target.ModifiedDate = source.ModifiedDate
+# MAGIC WHEN NOT MATCHED THEN
+# MAGIC   INSERT (
+# MAGIC     OrderItemID,
+# MAGIC     OrderID,
+# MAGIC     ProductID,
+# MAGIC     Quantity,
+# MAGIC     TotalPrice,
+# MAGIC     CreatedDate,
+# MAGIC     ModifiedDate
+# MAGIC   )
+# MAGIC   VALUES (
+# MAGIC     source.OrderItemID,
+# MAGIC     source.OrderID,
+# MAGIC     source.ProductID,
+# MAGIC     source.Quantity,
+# MAGIC     source.TotalPrice,
+# MAGIC     source.CreatedDate,
+# MAGIC     source.ModifiedDate
+# MAGIC   )
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC MERGE INTO abd.df_prj_orders AS target
+# MAGIC USING df_prj_Orders_view AS source
+# MAGIC ON target.OrderID = source.OrderID
+# MAGIC WHEN MATCHED THEN
+# MAGIC   UPDATE SET
+# MAGIC     target.CustomerID = source.CustomerID,
+# MAGIC     target.OrderDate = source.OrderDate,
+# MAGIC     target.OrderStatus = source.OrderStatus,
+# MAGIC     target.CreatedDate = source.CreatedDate,
+# MAGIC     target.ModifiedDate = source.ModifiedDate
+# MAGIC WHEN NOT MATCHED THEN
+# MAGIC   INSERT (
+# MAGIC     OrderID,
+# MAGIC     CustomerID,
+# MAGIC     OrderDate,
+# MAGIC     OrderStatus,
+# MAGIC     CreatedDate,
+# MAGIC     ModifiedDate
+# MAGIC   )
+# MAGIC   VALUES (
+# MAGIC     source.OrderID,
+# MAGIC     source.CustomerID,
+# MAGIC     source.OrderDate,
+# MAGIC     source.OrderStatus,
+# MAGIC     source.CreatedDate,
+# MAGIC     source.ModifiedDate
+# MAGIC   )
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC MERGE INTO abd.df_prj_payments AS target
+# MAGIC USING df_prj_Payments_view AS source
+# MAGIC ON target.PaymentID = source.PaymentID
+# MAGIC WHEN MATCHED THEN
+# MAGIC   UPDATE SET
+# MAGIC     target.target = 0;
+# MAGIC
+# MAGIC INSERT INTO abd.df_prj_payments
+# MAGIC SELECT 
+# MAGIC     PaymentID,
+# MAGIC     OrderID,
+# MAGIC     PaymentAmount,
+# MAGIC     PaymentDate,
+# MAGIC     CreatedDate,
+# MAGIC     ModifiedDate,
+# MAGIC     1 
+# MAGIC FROM df_prj_Payments_view
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC MERGE INTO abd.df_prj_products AS target
+# MAGIC USING df_prj_Products_view AS source
+# MAGIC ON target.ProductID = source.ProductID
+# MAGIC WHEN MATCHED THEN
+# MAGIC   UPDATE SET
+# MAGIC     target.ProductName = source.ProductName,
+# MAGIC     target.Price = source.Price,
+# MAGIC     target.Category = source.Category,
+# MAGIC     target.CreatedDate = source.CreatedDate,
+# MAGIC     target.ModifiedDate = source.ModifiedDate
+# MAGIC WHEN NOT MATCHED THEN
+# MAGIC   INSERT (
+# MAGIC     ProductID,
+# MAGIC     ProductName,
+# MAGIC     Price,
+# MAGIC     Category,
+# MAGIC     CreatedDate,
+# MAGIC     ModifiedDate
+# MAGIC   )
+# MAGIC   VALUES (
+# MAGIC     source.ProductID,
+# MAGIC     source.ProductName,
+# MAGIC     source.Price,
+# MAGIC     source.Category,
+# MAGIC     source.CreatedDate,
+# MAGIC     source.ModifiedDate
+# MAGIC   )
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC MERGE INTO abd.df_prj_promotions AS target
+# MAGIC USING df_prj_Promotions_view AS source
+# MAGIC ON target.PromotionID = source.PromotionID
+# MAGIC WHEN MATCHED THEN
+# MAGIC   UPDATE SET
+# MAGIC     target.PromotionName = source.PromotionName,
+# MAGIC     target.Discount = source.Discount,
+# MAGIC     target.StartDate = source.StartDate,
+# MAGIC     target.EndDate = source.EndDate,
+# MAGIC     target.CreatedDate = source.CreatedDate,
+# MAGIC     target.ModifiedDate = source.ModifiedDate
+# MAGIC WHEN NOT MATCHED THEN
+# MAGIC   INSERT (
+# MAGIC     PromotionID,
+# MAGIC     PromotionName,
+# MAGIC     Discount,
+# MAGIC     StartDate,
+# MAGIC     EndDate,
+# MAGIC     CreatedDate,
+# MAGIC     ModifiedDate
+# MAGIC   )
+# MAGIC   VALUES (
+# MAGIC     source.PromotionID,
+# MAGIC     source.PromotionName,
+# MAGIC     source.Discount,
+# MAGIC     source.StartDate,
+# MAGIC     source.EndDate,
+# MAGIC     source.CreatedDate,
+# MAGIC     source.ModifiedDate
+# MAGIC   )
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC MERGE INTO abd.df_prj_returns AS target
+# MAGIC USING df_prj_Returns_view AS source
+# MAGIC ON target.ReturnID = source.ReturnID
+# MAGIC WHEN MATCHED THEN
+# MAGIC   UPDATE SET
+# MAGIC     target.OrderID = source.OrderID,
+# MAGIC     target.ProductID = source.ProductID,
+# MAGIC     target.ReturnReason = source.ReturnReason,
+# MAGIC     target.ReturnDate = source.ReturnDate,
+# MAGIC     target.CreatedDate = source.CreatedDate,
+# MAGIC     target.ModifiedDate = source.ModifiedDate
+# MAGIC WHEN NOT MATCHED THEN
+# MAGIC   INSERT (
+# MAGIC     ReturnID,
+# MAGIC     OrderID,
+# MAGIC     ProductID,
+# MAGIC     ReturnReason,
+# MAGIC     ReturnDate,
+# MAGIC     CreatedDate,
+# MAGIC     ModifiedDate
+# MAGIC   )
+# MAGIC   VALUES (
+# MAGIC     source.ReturnID,
+# MAGIC     source.OrderID,
+# MAGIC     source.ProductID,
+# MAGIC     source.ReturnReason,
+# MAGIC     source.ReturnDate,
+# MAGIC     source.CreatedDate,
+# MAGIC     source.ModifiedDate
+# MAGIC   )
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC MERGE INTO abd.df_prj_reviews AS target
+# MAGIC USING df_prj_Reviews_view AS source
+# MAGIC ON target.ReviewID = source.ReviewID
+# MAGIC WHEN MATCHED THEN
+# MAGIC   UPDATE SET
+# MAGIC     target.ProductID = source.ProductID,
+# MAGIC     target.CustomerID = source.CustomerID,
+# MAGIC     target.Rating = source.Rating,
+# MAGIC     target.Comment = source.Comment,
+# MAGIC     target.CreatedDate = source.CreatedDate,
+# MAGIC     target.ModifiedDate = source.ModifiedDate
+# MAGIC WHEN NOT MATCHED THEN
+# MAGIC   INSERT (
+# MAGIC     ReviewID,
+# MAGIC     ProductID,
+# MAGIC     CustomerID,
+# MAGIC     Rating,
+# MAGIC     Comment,
+# MAGIC     CreatedDate,
+# MAGIC     ModifiedDate
+# MAGIC   )
+# MAGIC   VALUES (
+# MAGIC     source.ReviewID,
+# MAGIC     source.ProductID,
+# MAGIC     source.CustomerID,
+# MAGIC     source.Rating,
+# MAGIC     source.Comment,
+# MAGIC     source.CreatedDate,
+# MAGIC     source.ModifiedDate
+# MAGIC   )
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC MERGE INTO abd.df_prj_shippingdetails AS target
+# MAGIC USING df_prj_ShippingDetails_view AS source
+# MAGIC ON target.ShippingID = source.ShippingID
+# MAGIC WHEN MATCHED THEN
+# MAGIC   UPDATE SET
+# MAGIC     target.OrderID = source.OrderID,
+# MAGIC     target.ShippingMethod = source.ShippingMethod,
+# MAGIC     target.TrackingNumber = source.TrackingNumber,
+# MAGIC     target.ShipDate = source.ShipDate,
+# MAGIC     target.CreatedDate = source.CreatedDate,
+# MAGIC     target.ModifiedDate = source.ModifiedDate
+# MAGIC WHEN NOT MATCHED THEN
+# MAGIC   INSERT (
+# MAGIC     ShippingID,
+# MAGIC     OrderID,
+# MAGIC     ShippingMethod,
+# MAGIC     TrackingNumber,
+# MAGIC     ShipDate,
+# MAGIC     CreatedDate,
+# MAGIC     ModifiedDate
+# MAGIC   )
+# MAGIC   VALUES (
+# MAGIC     source.ShippingID,
+# MAGIC     source.OrderID,
+# MAGIC     source.ShippingMethod,
+# MAGIC     source.TrackingNumber,
+# MAGIC     source.ShipDate,
+# MAGIC     source.CreatedDate,
+# MAGIC     source.ModifiedDate
+# MAGIC   )
